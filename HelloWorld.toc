@@ -9,4 +9,3 @@ dmg.lua
 health.lua
 
 
-mklink /D "C:\Users\nybo\Downloads\wow\Interface\AddOns\HelloWorld" "C:\Users\nybo\Documents\GitHub\vanilla-addon"
