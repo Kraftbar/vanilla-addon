@@ -4,4 +4,9 @@
 ## Author: Paul Halliday
 ## Version: 0.0.1
 
-HelloWorld.lua
+guilib.lua
+dmg.lua
+health.lua
+
+
+mklink /D "C:\Users\nybo\Downloads\wow\Interface\AddOns\HelloWorld" "C:\Users\nybo\Documents\GitHub\vanilla-addon"
