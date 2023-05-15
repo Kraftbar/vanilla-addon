@@ -20,7 +20,7 @@ local function onCombatEvent()
     local meanDamage = totalDamage / numAttacks
     DEFAULT_CHAT_FRAME:AddMessage("Mean damage: " .. meanDamage)
 end
-asdsadasd
+
 -- Create a new frame and register for combat events
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS") -- Also consider CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS

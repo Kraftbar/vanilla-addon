@@ -1,5 +1,5 @@
 ## Interface: 11200
-## Title: HelloWorld
+## Title: vanillaAddon
 ## Notes: Prints "Hello, World" to the chat.
 ## Author: Paul Halliday
 ## Version: 0.0.1
