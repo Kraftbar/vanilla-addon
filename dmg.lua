@@ -12,12 +12,24 @@ combatStatsWindow:SetPoint("CENTER", UIParent, "CENTER", -150, 0) -- Adjust this
 combatStatsWindow:SetFrameStrata("HIGH")  -- Ensure it's on top of other UI elements
 combatStatsWindow:Show()  -- Make sure the window is shown
 
+-- Create the third window for displaying seconds until death
+local secondsUntilDeathWindow = CreateMessageWindow("SecondsUntilDeathWindow", 300, 30)
+secondsUntilDeathWindow:SetPoint("CENTER", UIParent, "CENTER", 0, -250) -- Adjust this line if needed
+secondsUntilDeathWindow:SetFrameStrata("HIGH")  -- Ensure it's on top of other UI elements
+secondsUntilDeathWindow:Show()  -- Make sure the window is shown
+
+-- Variables to store seconds until death
+local secondsUntilTargetDeath = 0
+local secondsUntilPlayerDeath = 0
+
 -- Reset function to be called when combat ends
 local function resetCombatStats()
     totalDamageDealt = 0
     totalDamageTaken = 0
     numAttacksDealt = 0
     combatStartTime = nil
+    secondsUntilTargetDeath = 0
+    secondsUntilPlayerDeath = 0
 end
 
 -- Function that handles combat events
@@ -37,6 +49,7 @@ local function onCombatEvent()
             AddMessage(combatStatsWindow, string.format("Combat ended. DPS  (Dealt): %.1f", dpsDealt))
         end
         resetCombatStats()
+        AddMessage(secondsUntilDeathWindow, string.format("Seconds until Target Death: %.1f / Me: %.1f", 0, 0))
         return
     end
 
@@ -50,7 +63,7 @@ local function onCombatEvent()
     if startPos and endPos then
         local damage = tonumber(string.sub(combatMessage, startPos, endPos))
 
-        -- Check if the damage was dealt by the player or taken by the player
+        -- Update variables depending on the type of event
         if event == "CHAT_MSG_COMBAT_SELF_HITS" or event == "CHAT_MSG_SPELL_SELF_DAMAGE" or event == "CHAT_MSG_COMBAT_SELF_CRITS" then
             -- Debug: Print the damage dealt value to the default chat frame
             DEFAULT_CHAT_FRAME:AddMessage("Damage Dealt: " .. damage)
@@ -72,11 +85,11 @@ local function onCombatEvent()
             local outputMessage = string.format("Damage Dealt: %.1f |  DPS:  %.1f", damage, dpsDealt)
             DEFAULT_CHAT_FRAME:AddMessage(outputMessage)
 
-               -- Calculate seconds until target's death
-               local targetCurrentHealth = UnitHealth("target")
-               local secondsUntilTargetDeath = targetCurrentHealth / dpsDealt
-               DEFAULT_CHAT_FRAME:AddMessage(string.format("Seconds until Target Death: %.1f", secondsUntilTargetDeath))  -- Added
-         
+            -- Calculate seconds until target's death
+            local targetCurrentHealth = UnitHealth("target")
+            secondsUntilTargetDeath = targetCurrentHealth / dpsDealt
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("Seconds until Target Death: %.1f", secondsUntilTargetDeath))  -- Added
+
         elseif event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS" or event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE" then
             -- Debug: Print the damage taken value to the default chat frame
             DEFAULT_CHAT_FRAME:AddMessage("Damage Taken: " .. damage)
@@ -94,21 +107,24 @@ local function onCombatEvent()
             local dtpsTaken = totalDamageTaken / elapsedTime
 
             -- Debug: Output the damage taken in the chat frame
-
             local outputMessage = string.format("Damage Taken: %.1f | DTPS: %.1f", damage, dtpsTaken)
             DEFAULT_CHAT_FRAME:AddMessage(outputMessage)
 
-      -- Calculate seconds until player's death
-      local playerCurrentHealth = UnitHealth("player")
-      local secondsUntilPlayerDeath = playerCurrentHealth / dtpsTaken
-      DEFAULT_CHAT_FRAME:AddMessage(string.format("Seconds until Player Death: %.1f", secondsUntilPlayerDeath))  -- Added
-
+            -- Calculate seconds until player's death
+            local playerCurrentHealth = UnitHealth("player")
+            secondsUntilPlayerDeath = playerCurrentHealth / dtpsTaken
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("Seconds until Player Death: %.1f", secondsUntilPlayerDeath))  -- Added
 
         end
+
+        -- Update the third window with both values on one line
+        AddMessage(secondsUntilDeathWindow, string.format("Seconds until Target Death: %.1f / Me: %.1f", secondsUntilTargetDeath, secondsUntilPlayerDeath))
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("Seconds until Target Death: %.1f / Me: %.1f", secondsUntilTargetDeath, secondsUntilPlayerDeath))  -- Added
+
     else
         -- Debug: No damage found in combatMessage
         DEFAULT_CHAT_FRAME:AddMessage("No damage found in combatMessage.")
-    end
+    end        
 end
 
 -- Create a new frame and register for combat events
