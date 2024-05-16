@@ -4,8 +4,6 @@
 ## Author: Paul Halliday
 ## Version: 0.0.1
 
-guilib.lua
+window.lua
 dmg.lua
 health.lua
-
-
