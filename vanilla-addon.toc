@@ -3,7 +3,7 @@
 ## Notes: Prints "Hello, World" to the chat.
 ## Author: Paul Halliday
 ## Version: 0.0.1
+## SavedVariables: VanillaLedgerDB, VanillaLedgerErrors
 
+Ledger.lua
 window.lua
-dmg.lua
-health.lua

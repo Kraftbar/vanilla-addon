@@ -1,0 +1,85 @@
+su
+
+sudo usermod -aG sudo nybo
+
+grep docker /etc/group
+
+sudo usermod -aG docker nybo
+
+groups nybo
+
+sudo apt update && sudo apt install docker-compose -y
+
+sudo reboot
+
+docker run hello-world
+
+mkdir /home/nybo/docker
+
+cd /home/nybo/docker
+
+git clone https://github.com/mserajnik/vmangos-deploy.git
+
+cd ./vmangos-deploy
+
+cp ./config/mangosd.conf.example ./config/mangosd.conf
+cp ./config/realmd.conf.example ./config/realmd.conf
+cp ./compose.yaml.example ./compose.yaml
+
+*******(Adjust Realm List Name, Realm IP, Warden, Build Versions, Timezones, etc)*******
+
+nano ./compose.yaml
+sed -i 's/VMANGOS_REALMLIST_NAME=VMaNGOS/VMANGOS_REALMLIST_NAME=CustomFunServer/' compose.yaml
+sed -i 's/VMANGOS_REALMLIST_ADDRESS=127.0.0.1/VMANGOS_REALMLIST_ADDRESS=192.168.1.156/' compose.yaml
+sed -i 's/VMANGOS_REALMLIST_TIMEZONE=0/VMANGOS_REALMLIST_TIMEZONE=10/' compose.yaml
+sed -i 's|ghcr.io/mserajnik/vmangos-server:5875|ghcr.io/mserajnik/vmangos-server:5875-anticheat|' compose.yaml
+sed -i 's|# - ./storage/mangosd/warden-modules|- ./storage/mangosd/warden-modules|' compose.yaml
+
+
+cd ./storage/mangosd/extracted-data
+ 
+wget https://www.mediafire.com/file_premium/j6cyqjeif3dvrv2/data.7z
+
+sudo 7z x data.7z ; sudo chmod -R 755 data
+
+sudo cp -r /home/nybo/docker/vmangos-deploy/storage/mangosd/extracted-data/data/* /home/nybo/docker/vmangos-deploy/storage/mangosd/extracted-data/
+
+sudo rm -r data.7z
+sudo rm -r data
+
+******(Optional Warden Modules AKA Anti Cheat System)******
+
+cd /home/nybo/docker/vmangos-deploy/storage/mangosd/warden-modules
+
+git clone https://github.com/vmangos/warden_modules
+
+cp -r /home/nybo/docker/vmangos-deploy/storage/mangosd/warden-modules/warden_modules/* /home/nybo/docker/vmangos-deploy/storage/mangosd/warden-modules/
+
+sudo rm -r /home/nybo/docker/vmangos-deploy/storage/mangosd/warden-modules/warden_modules
+
+nano /home/nybo/docker/vmangos-deploy/config/mangosd.conf
+
+******(ensure that `Warden.ModuleDir` is set to "/opt/vmangos/storage/warden-modules" )******
+
+
+nano /home/nybo/docker/vmangos-deploy/config/mangosd.conf
+nano /home/nybo/docker/vmangos-deploy/config/realmd.conf
+
+******(Kicking It All Off)******
+
+cd /home/nybo/docker/vmangos-deploy/
+
+docker-compose up -d
+docker-compose logs -f mangosd
+docker-compose logs -f realmd
+
+docker attach vmangos-deploy_mangosd_1 # control + p then control + q
+
+# see https://github.com/vmangos/core/blob/bd9cca7b9d16d3e88c15ed378a893faebaf353f1/src/shared/Common.h#L183-L190
+account create test1 test
+account set gmlevel test1 3
+
+
+
+
+
