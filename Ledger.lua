@@ -125,7 +125,7 @@ local function buildSoldGroups(filterDayKey)
     end
     -- flatten to array
     local arr, n = {}, 0
-    for _, g in groups do
+    for _, g in pairs(groups) do
         n = n + 1
         arr[n] = g
     end
@@ -160,10 +160,10 @@ local function buildDaySummaries()
     end
     -- flatten and sort per-day groups and days
     local days, n = {}, 0
-    for _, d in dayMap do
+    for _, d in pairs(dayMap) do
         -- flatten groups
         local arr, m = {}, 0
-        for _, g in d.groups do m = m + 1; arr[m] = g end
+        for _, g in pairs(d.groups) do m = m + 1; arr[m] = g end
         table.sort(arr, function(a, b)
             if a.count ~= b.count then return a.count > b.count end
             return (a.item or "") < (b.item or "")
@@ -191,7 +191,7 @@ local function buildExpiredGroups(filterDayKey)
         end
     end
     local arr, n = {}, 0
-    for _, g in groups do
+    for _, g in pairs(groups) do
         n = n + 1
         arr[n] = g
     end
@@ -222,9 +222,9 @@ local function buildExpiredDaySummaries()
         g.count = g.count + 1
     end
     local days, n = {}, 0
-    for _, d in dayMap do
+    for _, d in pairs(dayMap) do
         local arr, m = {}, 0
-        for _, g in d.groups do m = m + 1; arr[m] = g end
+        for _, g in pairs(d.groups) do m = m + 1; arr[m] = g end
         table.sort(arr, function(a, b)
             if a.count ~= b.count then return a.count > b.count end
             return (a.item or "") < (b.item or "")

@@ -7,3 +7,5 @@
 
 Ledger.lua
 window.lua
+warnings.lua
+aux_search.lua
