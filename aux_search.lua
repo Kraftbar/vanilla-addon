@@ -432,8 +432,6 @@ SlashCmdList["AUXFIND"] = function(msg)
   elseif msg == "debug off" then
     AUXFIND_DEBUG = false
     DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[AuxFind]|r Debug disabled")
-  elseif msg == "" then
-    StaticPopup_Show("VANILLA_AUX_FIND")
   else
     AuxFind_Run(msg)
   end

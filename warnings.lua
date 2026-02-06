@@ -108,7 +108,7 @@ local function MaybeWarnLowTTD()
     lastWarnAt = now
     ShowLowTTDWarning(ttd, hpPct)
     if CombatStats and CombatStats.debug then
-      local count = 0; for _ in attackers do count = count + 1 end
+      local count = 0; for _ in pairs(attackers) do count = count + 1 end
       DEFAULT_CHAT_FRAME:AddMessage("|cffffff00[CombatStats DEBUG]|r Warn fired: ttd=" .. string.format("%.2f", ttd) .. ", hp%=" .. string.format("%.1f", hpPct * 100) .. ", attackers=" .. tostring(count))
     end
   end

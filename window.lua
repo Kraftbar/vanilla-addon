@@ -386,12 +386,12 @@ SlashCmdList["AUXFIND"] = function(msg)
             local function arrlen(t)
                 if getn then return getn(t) end
                 if table and table.getn then return table.getn(t) end
-                local n = 0; for _ in t do n = n + 1 end; return n
+                local n = 0; for _ in pairs(t) do n = n + 1 end; return n
             end
             local function arrlen(t)
                 if getn then return getn(t) end
                 if table and table.getn then return table.getn(t) end
-                local n = 0; for _ in t do n = n + 1 end; return n
+                local n = 0; for _ in pairs(t) do n = n + 1 end; return n
             end
             local lines = {"|cffffff00[AuxFind]|r Results for '" .. (query or "") .. "':"}
             local shown = 0
