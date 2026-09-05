@@ -47,12 +47,13 @@ function CreateFrame(_, name, parent, template)
 end
 function getglobal(name) return _G[name] end
 function GetTime() return os.clock() + 100 end
-local targetName, targetHealth = "Target", 500
+local targetName, targetHealth, targetLevel, targetExists = "Target", 500, 10, true
 function UnitName(unit) if unit == "player" then return "Tester" end return targetName end
 function UnitClass() return "Warrior", "WARRIOR" end
 function UnitHealth(unit) if unit == "target" then return targetHealth end return 500 end
+function UnitLevel(unit) if unit == "target" then return targetLevel end return 60 end
 function UnitHealthMax() return 1000 end
-function UnitExists() return true end
+function UnitExists(unit) return unit ~= "target" or targetExists end
 function UnitAffectingCombat() return true end
 function UnitFactionGroup() return "Alliance" end
 function GetCVar() return "TestRealm" end
@@ -116,12 +117,19 @@ assert(VanillaAddon.CombatUI.historyRows[1].cells.when,
     "combat history did not create aligned table cells")
 CombatHistoryMinimapButton._scripts.OnClick()
 assert(not CombatHistoryFrame:IsShown(), "combat history minimap button did not close history")
+targetName, targetLevel = "Wolf", 10
 fire("PLAYER_REGEN_DISABLED")
 fire("CHAT_MSG_COMBAT_SELF_HITS", "You hit Wolf for 40.")
-targetName, targetHealth = "Second Target", 1000
+targetName, targetHealth, targetLevel = "Second Target", 1000, 12
 fire("PLAYER_TARGET_CHANGED")
 assert(VanillaAddon.Combat.current.target == "Second Target", "target switch was not tracked")
+assert(VanillaAddon.Combat.current.targetLevel == 12, "target level was not tracked")
 assert(VanillaAddon.Combat.current.timeToTargetDeath > 0, "target switch left a zero death estimate")
+targetExists = false
+fire("PLAYER_TARGET_CHANGED")
+assert(VanillaAddon.Combat.current.target == "Second Target", "losing the target erased its name")
+assert(VanillaAddon.Combat.current.targetLevel == 12, "losing the target erased its level")
+assert(VanillaAddon.Combat.current.timeToTargetDeath == 0, "losing the target kept a stale death estimate")
 fire("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "Wolf suffers 12 Fire damage from your Fireball.")
 fire("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS", "Wolf hits you for 20.")
 fire("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE", "You suffer 5 damage from Scorpid's Poison.")
@@ -130,6 +138,16 @@ assert(#VanillaAddonDB.combatHistory == 1, "combat history was not recorded")
 assert(VanillaLedgerDB.addon == VanillaAddonDB, "shared database is not nested in the persisted ledger database")
 assert(VanillaAddonDB.combatHistory[1].damageDealt == 52, "outgoing damage mismatch")
 assert(VanillaAddonDB.combatHistory[1].damageTaken == 25, "incoming damage mismatch")
+assert(VanillaAddonDB.combatHistory[1].target == "Second Target", "history lost the last valid target")
+assert(VanillaAddonDB.combatHistory[1].targetLevel == 12, "history lost the target level")
+local combatTargets = VanillaAddonDB.combatHistory[1].targets
+assert(#combatTargets == 3, "history did not retain every opponent")
+assert(combatTargets[1].name == "Wolf" and combatTargets[1].level == 10,
+    "history lost the first target and its level")
+assert(combatTargets[2].name == "Second Target" and combatTargets[2].level == 12,
+    "history lost the switched target and its level")
+assert(combatTargets[3].name == "Scorpid" and combatTargets[3].level == nil,
+    "history did not infer an untargeted attacker")
 
 local inboxRows = {}
 function GetInboxNumItems() return #inboxRows end
@@ -193,6 +211,10 @@ SlashCmdList["LEDGER"]("ui")
 SlashCmdList["COMBATSTATS"]("history")
 assert(strlen(VanillaAddon.CombatUI.historyRows[1].cells.when._text) == 19,
     "combat history timestamp lost precision")
+assert(VanillaAddon.CombatUI.historyRows[1].cells.target._text == "Wolf +2",
+    "combat history did not summarize multiple opponents")
+assert(VanillaAddon.CombatUI.historyRows[1].cells.level._text == "10,...",
+    "combat history did not summarize opponent levels")
 for _, frame in ipairs(frames) do if frame._scripts.OnUpdate then this = frame; frame._scripts.OnUpdate() end end
 assert(VanillaAddon:FormatCoins(-60) == "-0g 0s 60c", "negative coin formatting failed")
 print("runtime smoke test: ok")

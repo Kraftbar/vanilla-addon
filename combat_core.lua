@@ -40,10 +40,37 @@ local function freshCurrent()
         timeToTargetDeath = 0,
         timeToPlayerDeath = 0,
         target = nil,
+        targetLevel = nil,
+        targets = {},
     }
 end
 
 Combat.current = freshCurrent()
+
+function Combat:TrackOpponent(name, level)
+    if not name or name == "" then return end
+    local targets = self.current.targets
+    for i = 1, VA:ArrayLen(targets) do
+        local opponent = targets[i]
+        if opponent.name == name then
+            if level ~= nil then opponent.level = level end
+            return
+        end
+    end
+    VA:ArrayPush(targets, { name = name, level = level })
+end
+
+function Combat:CaptureTarget()
+    if not UnitExists("target") then return false end
+    if UnitCanAttack and not UnitCanAttack("player", "target") then return false end
+    local target = UnitName("target")
+    if not target or target == "" then return false end
+    local level = UnitLevel("target")
+    self.current.target = target
+    self.current.targetLevel = level
+    self:TrackOpponent(target, level)
+    return true
+end
 
 local function syncCompatibility()
     local current = Combat.current
@@ -63,7 +90,7 @@ function Combat:Start()
     self.current = freshCurrent()
     self.current.startedAt = time()
     self.current.startedClock = GetTime()
-    self.current.target = UnitName("target")
+    self:CaptureTarget()
     self.recentTaken = {}
     syncCompatibility()
     VA:Emit("COMBAT_STARTED", self.current)
@@ -79,6 +106,11 @@ function Combat:GetSnapshot()
     local elapsed = self:GetElapsed()
     local dealt = self.current.damageDealt or 0
     local taken = self.current.damageTaken or 0
+    local targets = {}
+    for i = 1, VA:ArrayLen(self.current.targets) do
+        local opponent = self.current.targets[i]
+        targets[i] = { name = opponent.name, level = opponent.level }
+    end
     return {
         elapsed = elapsed,
         damageDealt = dealt,
@@ -88,6 +120,8 @@ function Combat:GetSnapshot()
         attacksDealt = self.current.attacksDealt or 0,
         hitsTaken = self.current.hitsTaken or 0,
         target = self.current.target,
+        targetLevel = self.current.targetLevel,
+        targets = targets,
         timeToTargetDeath = self.current.timeToTargetDeath or 0,
         timeToPlayerDeath = self.current.timeToPlayerDeath or 0,
     }
@@ -95,11 +129,10 @@ end
 
 function Combat:UpdateTargetEstimate()
     if not UnitExists("target") then
-        self.current.target = nil
         self.current.timeToTargetDeath = 0
         return
     end
-    self.current.target = UnitName("target")
+    self:CaptureTarget()
     local elapsed = self:GetElapsed()
     local dps = elapsed > 0 and (self.current.damageDealt or 0) / elapsed or 0
     local health = UnitHealth("target") or 0
@@ -134,7 +167,9 @@ end
 
 local function parseIncoming(message, eventName)
     if eventName == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE" then
-        return parsePeriodicIncoming(message)
+        local amount, source = parsePeriodicIncoming(message)
+        local _, _, opponent = strfind(source or "", "^(.+)'s .+$")
+        return amount, source, opponent
     end
     local source, amount
     _, _, source, amount = strfind(message, "^(.+)'s .- hits [Yy]ou for (%d+)")
@@ -142,17 +177,25 @@ local function parseIncoming(message, eventName)
     if not source then _, _, source, amount = strfind(message, "^(.+) hits [Yy]ou for (%d+)") end
     if not source then _, _, source, amount = strfind(message, "^(.+) crits [Yy]ou for (%d+)") end
     if not amount then _, _, amount = strfind(message, "(%d+)") end
-    return tonumber(amount), source
+    return tonumber(amount), source, source
 end
 
 local function parseOutgoing(message, eventName)
-    local amount
+    local amount, target
     if eventName == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" or eventName == "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE" then
-        _, _, amount = strfind(message, " suffers%s+(%d+)")
+        _, _, target, amount = strfind(message, "^(.-) suffers%s+(%d+)")
+    elseif eventName == "CHAT_MSG_COMBAT_SELF_HITS" then
+        _, _, target, amount = strfind(message, "^[Yy]ou hit (.+) for (%d+)")
+    elseif eventName == "CHAT_MSG_COMBAT_SELF_CRITS" then
+        _, _, target, amount = strfind(message, "^[Yy]ou crit (.+) for (%d+)")
+    elseif eventName == "CHAT_MSG_SPELL_SELF_DAMAGE" then
+        _, _, target, amount = strfind(message, "^Your .- hits (.+) for (%d+)")
+        if not target then _, _, target, amount = strfind(message, "^Your .- crits (.+) for (%d+)") end
     else
         _, _, amount = strfind(message, "(%d+)")
     end
-    return tonumber(amount)
+    if not amount then _, _, amount = strfind(message, "(%d+)") end
+    return tonumber(amount), target
 end
 
 function Combat:PruneRecent(now)
@@ -192,15 +235,15 @@ end
 
 function Combat:HandleDamage(eventName, message)
     if not self.inCombat then self:Start() end
-    local amount, source
+    local amount, source, opponent
     if outgoingEvents[eventName] then
-        amount = parseOutgoing(message, eventName)
+        amount, opponent = parseOutgoing(message, eventName)
         if amount then
             self.current.damageDealt = self.current.damageDealt + amount
             self.current.attacksDealt = self.current.attacksDealt + 1
         end
     elseif incomingEvents[eventName] then
-        amount, source = parseIncoming(message, eventName)
+        amount, source, opponent = parseIncoming(message, eventName)
         if amount then
             self.current.damageTaken = self.current.damageTaken + amount
             self.current.hitsTaken = self.current.hitsTaken + 1
@@ -211,6 +254,7 @@ function Combat:HandleDamage(eventName, message)
         VA:Diag("combat-unparsed", eventName .. " | " .. tostring(message))
         return
     end
+    self:TrackOpponent(opponent)
     self:UpdateTargetEstimate()
     local recentDtps, recentAttackers, playerHealth = self:UpdatePlayerEstimate()
     syncCompatibility()

@@ -7,10 +7,11 @@ VA:RegisterModule("combat-ui", UI)
 
 local historyColumns = {
     { key = "when", x = 0, width = 165, title = "When" },
-    { key = "target", x = 169, width = 220, title = "Target" },
-    { key = "time", x = 393, width = 60, title = "Time", right = true },
-    { key = "dps", x = 457, width = 70, title = "DPS", right = true },
-    { key = "dtps", x = 531, width = 70, title = "DTPS", right = true },
+    { key = "target", x = 169, width = 180, title = "Target" },
+    { key = "level", x = 353, width = 45, title = "Lvl", right = true },
+    { key = "time", x = 402, width = 55, title = "Time", right = true },
+    { key = "dps", x = 461, width = 68, title = "DPS", right = true },
+    { key = "dtps", x = 533, width = 68, title = "DTPS", right = true },
 }
 
 local function makeHistoryText(parent, column, font)
@@ -19,6 +20,30 @@ local function makeHistoryText(parent, column, font)
     text:SetWidth(column.width - 6)
     text:SetJustifyH(column.right and "RIGHT" or "LEFT")
     return text
+end
+
+local function formatTargetLevel(level)
+    level = tonumber(level)
+    if not level then return "--" end
+    if level < 0 then return "??" end
+    return tostring(level)
+end
+
+local function summarizeTargets(row)
+    local targets = row.targets
+    local count = VA:ArrayLen(targets)
+    if count == 0 then
+        return row.target or "Unknown", formatTargetLevel(row.targetLevel)
+    end
+    if count == 1 then
+        return targets[1].name or "Unknown", formatTargetLevel(targets[1].level)
+    end
+    if count == 2 then
+        return (targets[1].name or "Unknown") .. ", " .. (targets[2].name or "Unknown"),
+            formatTargetLevel(targets[1].level) .. "," .. formatTargetLevel(targets[2].level)
+    end
+    return (targets[1].name or "Unknown") .. " +" .. (count - 1),
+        formatTargetLevel(targets[1].level) .. ",..."
 end
 
 local function createMessageWindow(name, positionKey, width, height, xOffset)
@@ -200,8 +225,10 @@ function UI:RenderHistory()
         local frameRow = self.historyRows[i]
         local row = data[count - self.historyOffset - i + 1]
         if row then
+            local targetSummary, levelSummary = summarizeTargets(row)
             frameRow.cells.when:SetText(date("%Y-%m-%d %H:%M:%S", row.endedAt or time()))
-            frameRow.cells.target:SetText(VA:TrimText(row.target or "Unknown", 32))
+            frameRow.cells.target:SetText(VA:TrimText(targetSummary, 26))
+            frameRow.cells.level:SetText(levelSummary)
             frameRow.cells.time:SetText(format("%.1fs", row.elapsed or 0))
             frameRow.cells.dps:SetText(format("%.1f", row.dps or 0))
             frameRow.cells.dtps:SetText(format("%.1f", row.dtps or 0))
